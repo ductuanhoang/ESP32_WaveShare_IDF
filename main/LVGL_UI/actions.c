@@ -1,0 +1,281 @@
+
+#include "actions.h"
+#include "vars.h"
+#include "common.h"
+#include <lvgl.h>
+#include "screens.h"
+#include "ui.h"
+#include "ui_update.h"
+
+#define TAG "ACTIONS"
+
+void action_pressure_minotor(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_PRESSURE;
+    loadScreen(SCREEN_ID_SCREEN_PRESSURE);
+}
+void action_temperature_monitor(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_TEMPERATURE;
+    loadScreen(SCREEN_ID_SCREEN_TEMPERATURE);
+}
+
+void action_temperature_change_unit(lv_event_t *e)
+{
+    lv_obj_t *dropdown = lv_event_get_target(e); // Get the object that triggered the event
+
+    // Option 1: Get the selected option as a string
+    char buf[32]; // Buffer to store the selected string
+    lv_dropdown_get_selected_str(dropdown, buf, sizeof(buf));
+    ESP_LOGI(TAG, "Selected unit (string): %s", buf);
+
+    // Option 2: Get the index of the selected option
+    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
+    // ESP_LOGI(TAG, "Selected unit (index): %ld", selected_index);
+
+    // You can then use an if-else or switch statement to react to the selected value
+    if (strcmp(buf, "C") == 0)
+    {
+        // Do something when Celsius is selected
+        ESP_LOGI(TAG, "Celsius selected!");
+        set_var_temperature_unit(TEMPERATURE_UNIT_CELSIUS);
+    }
+    else if (strcmp(buf, "F") == 0)
+    {
+        // Do something when Fahrenheit is selected
+        ESP_LOGI(TAG, "Fahrenheit selected!");
+        set_var_temperature_unit(TEMPERATURE_UNIT_FAHRENHEIT);
+    }
+
+    // Or using the index:
+    if (selected_index == 0)
+    {
+        // Celsius (first option)
+        ESP_LOGI(TAG, "Celsius selected by index!");
+        set_var_temperature_unit(TEMPERATURE_UNIT_CELSIUS);
+    }
+    else if (selected_index == 1)
+    {
+        // Fahrenheit (second option)
+        ESP_LOGI(TAG, "Fahrenheit selected by index!");
+        set_var_temperature_unit(TEMPERATURE_UNIT_FAHRENHEIT);
+    }
+}
+
+void action_pressure_change_unit(lv_event_t *e)
+{
+    lv_obj_t *dropdown = lv_event_get_target(e); // Get the object that triggered the event
+
+    // Option 1: Get the selected option as a string
+    char buf[32]; // Buffer to store the selected string
+    lv_dropdown_get_selected_str(dropdown, buf, sizeof(buf));
+    ESP_LOGI(TAG, "Selected unit (string): %s", buf);
+
+    // Option 2: Get the index of the selected option
+    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
+    ESP_LOGI(TAG, "Selected unit (index): %d", selected_index);
+
+    // You can then use an if-else or switch statement to react to the selected value
+    if (strcmp(buf, "PSI") == 0)
+    {
+        // Do something when PSI is selected
+        ESP_LOGI(TAG, "PSI selected!");
+        set_var_pressure_unit(PRESSURE_UNIT_PSI);
+    }
+    else if (strcmp(buf, "mbar") == 0)
+    {
+        // Do something when mbar is selected
+        ESP_LOGI(TAG, "mbar selected!");
+        set_var_pressure_unit(PRESSURE_UNIT_mBAR);
+    }
+}
+
+void action_back_to_main_screen(lv_event_t *e)
+{
+    // This function should navigate back to the main screen
+    // Assuming you have a function to switch screens, e.g., switch_to_main_screen();
+    ESP_LOGI(TAG, "Navigating back to main screen...");
+    if (flow_global_variables.current_screen_id == SCREEN_ID_SCREEN_SETTINGS)
+    {
+        // If we are in settings, we need to hide the settings screen
+        lv_textarea_set_text(objects.input_password_field, "");
+        lv_dropdown_clear_options(objects.input_wifi_list);
+    }
+    else if (flow_global_variables.current_screen_id == SCREEN_ID_SCREEN_PRESSURE)
+    {
+        action_back_from_pressure2main(flow_global_variables.pressure_unit);
+    }
+    flow_global_variables.current_screen_id = SCREEN_ID_MAIN;
+    loadScreen(SCREEN_ID_MAIN);
+}
+
+static void popup_anim_cb(void *var, int32_t v)
+{
+    lv_obj_set_style_transform_zoom(var, v, LV_PART_MAIN);
+}
+
+void action_wifi_scan_button(lv_event_t *e)
+{
+    ESP_LOGI(TAG, "Scanning for WiFi networks...");
+    // wifi_scan_event_handler(1);
+    // wifi_scan_task_init(); // Initialize the WiFi scan task
+}
+
+void action_wifi_connect_button(lv_event_t *e)
+{
+    // go to the main screen
+    ESP_LOGI(TAG, "Connecting to WiFi...");
+    // get the password from the input field
+    const char *password = lv_textarea_get_text(objects.input_password_field);
+    ESP_LOGI(TAG, "Password entered: %s", password);
+    char ssid[32];
+    lv_dropdown_get_selected_str(objects.input_wifi_list, ssid, sizeof(ssid));
+    ESP_LOGI(TAG, "SSID selected: %s", ssid);
+    if (strlen(ssid) == 0)
+    {
+        ESP_LOGE(TAG, "SSID is empty. Cannot connect.");
+        // lv_obj_clear_flag(lv_obj_get_parent(objects.container_wifi), LV_OBJ_FLAG_HIDDEN);
+        show_popup("Error", "Please select a WiFi network.", 5000);
+        return;
+    }
+
+    // wifi_user_save_credentials(ssid, password);
+    // wifi_scan_event_handler(2);
+    // wifi_user_connect(ssid, password);
+    // Clear the input field and dropdown after connection
+    lv_textarea_set_text(objects.input_password_field, "");
+    lv_dropdown_clear_options(objects.input_wifi_list);
+    flow_global_variables.current_screen_id = SCREEN_ID_MAIN;
+    loadScreen(SCREEN_ID_MAIN);
+}
+
+void action_settings_button(lv_event_t *e)
+{
+    // This function should navigate to the settings screen
+    // Assuming you have a function to switch screens, e.g., switch_to_settings_screen();
+    ESP_LOGI(TAG, "Navigating to settings screen...");
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_SETTINGS);
+}
+
+void action_keyboard_event(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    lv_event_code_t code = lv_event_get_code(e);
+    uint32_t btn_id = lv_btnmatrix_get_selected_btn(obj);
+    // get special button like space
+    // Get the text of the button that was pressed
+    const char *txt = lv_btnmatrix_get_btn_text(obj, btn_id);
+
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        // check if the button is character in range charector from 32 to126
+        if (*txt > 32 && *txt < 126)
+        {
+            ESP_LOGI(TAG, "Button pressedtest: %s", txt);
+            if (strcmp(txt, "abc") == 0 || strcmp(txt, "ABC") == 0 || strcmp(txt, "123") == 0)
+                return;
+            if (strcmp(txt, LV_SYMBOL_KEYBOARD) == 0)
+                return;
+            if (strcmp(txt, "space") == 0)
+            {
+                // add space character
+                lv_textarea_add_char(objects.input_password_field, ' ');
+                return;
+            }
+            lv_textarea_add_char(objects.input_password_field, txt[0]);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "button id: %ld", btn_id);
+            //
+            if (strcmp(txt, LV_SYMBOL_BACKSPACE) == 0)
+            {
+                // delete the last character
+                lv_textarea_del_char(objects.input_password_field);
+            }
+        }
+    }
+}
+
+// draft
+void action_setttings_button(lv_event_t *e)
+{
+}
+
+void action_wifi_settings(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_WIFI_SETTINGS);
+}
+void action_rtc_settings(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_RTC_SETTINGS);
+}
+void action_system_settings(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_SETTINGS);
+}
+void action_rtc_set_time_manual(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_RTC_SETTINGS);
+}
+void action_wifi_save(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_WIFI_SETTINGS);
+}
+
+void action_checkbox_wifi_station(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        const char *txt = lv_checkbox_get_text(obj);
+        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        // LV_LOG_USER("%s: %s", txt, state);
+        ESP_LOGI(TAG, "%s: %s", txt, state);
+    }
+}
+
+void action_checkbox_wifi_ap(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        const char *txt = lv_checkbox_get_text(obj);
+        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        // LV_LOG_USER("%s: %s", txt, state);
+        ESP_LOGI(TAG, "%s: %s", txt, state);
+    }
+}
+void action_checkbox_wifi_station_ap(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        const char *txt = lv_checkbox_get_text(obj);
+        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        // LV_LOG_USER("%s: %s", txt, state);
+        ESP_LOGI(TAG, "%s: %s", txt, state);
+    }
+}
+
+void action_checkbox_sync_time(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        const char *txt = lv_checkbox_get_text(obj);
+        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        // LV_LOG_USER("%s: %s", txt, state);
+        ESP_LOGI(TAG, "%s: %s", txt, state);
+    }
+}

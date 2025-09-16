@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ESP32 Sensor Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h2 { margin: 0 0 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>ESP32 Sensor Dashboard</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>Temperature</h2>
+      <div id="tempGauge"></div>
+      <div id="tempChart"></div>
+    </div>
+    <div class="card">
+      <h2>Pressure</h2>
+      <div id="pressGauge"></div>
+      <div id="pressChart"></div>
+    </div>
+  </div>
+
+  <script>
+    // Gauge + chart setup (giống code trước)
+    const tempGauge = new ApexCharts(document.querySelector("#tempGauge"), {
+      chart: { type: 'radialBar', height: 200 },
+      series: [0],
+      labels: ['°C'],
+      colors: ['#FF5733']
+    }); tempGauge.render();
+
+    const tempChart = new ApexCharts(document.querySelector("#tempChart"), {
+      chart: { type: 'area', height: 200, animations: { enabled: true, easing: 'linear', speed: 800 } },
+      series: [{ name: 'Temperature', data: [] }],
+      xaxis: { categories: [] },
+      colors: ['#FF5733']
+    }); tempChart.render();
+
+    const pressGauge = new ApexCharts(document.querySelector("#pressGauge"), {
+      chart: { type: 'radialBar', height: 200 },
+      series: [0],
+      labels: ['hPa'],
+      colors: ['#007BFF']
+    }); pressGauge.render();
+
+    const pressChart = new ApexCharts(document.querySelector("#pressChart"), {
+      chart: { type: 'area', height: 200, animations: { enabled: true, easing: 'linear', speed: 800 } },
+      series: [{ name: 'Pressure', data: [] }],
+      xaxis: { categories: [] },
+      colors: ['#007BFF']
+    }); pressChart.render();
+
+    function updateChart(chart, value, now) {
+      let s = chart.w.config.series[0].data;
+      let l = chart.w.config.xaxis.categories;
+      if (s.length > 20) { s.shift(); l.shift(); }
+      s.push(value); l.push(now);
+      chart.updateOptions({ series: [{ data: s }], xaxis: { categories: l } });
+    }
+
+    // WebSocket client
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const now = new Date().toLocaleTimeString();
+
+      tempGauge.updateSeries([data.temperature]);
+      pressGauge.updateSeries([data.pressure]);
+      updateChart(tempChart, data.temperature, now);
+      updateChart(pressChart, data.pressure, now);
+    };
+  </script>
+</body>
+</html>

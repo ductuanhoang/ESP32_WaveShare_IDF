@@ -1,0 +1,20 @@
+/**
+ * @file WS_SERVER.h
+ *
+ */
+
+#ifndef WS_SERVER_H
+#define WS_SERVER_H
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+    void ws_server_init(void);
+    bool is_ws_init_done(void);
+    void ws_server_stop(void);
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
+#endif // WS_SERVER_H
