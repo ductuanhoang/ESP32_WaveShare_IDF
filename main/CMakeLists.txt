@@ -20,11 +20,12 @@ SRCS
      "./LVGL_UI/ui.c"
      "./LVGL_UI/ui_update.c"
      "./LVGL_UI/vars.c"
-     "./LVGL_UI/vars.c"
+     "./LVGL_UI/user_keyboard.c"
      "./MS5837/MS5837.cpp"
      "./MS5837/I2Cbus.cpp"
      "./MS5837/ms5837_sensor.cpp"
      "./WS_SERVER/ws_server.c"
+     "./Sntp/sntp_time.cpp"
 
 INCLUDE_DIRS 
      "./LCD_Driver/Vernon_ST7789T" 
@@ -39,6 +40,7 @@ INCLUDE_DIRS
      "./LVGL_UI"
      "./MS5837"
      "./WS_SERVER"
+     "./Sntp"
      "."
 )
 

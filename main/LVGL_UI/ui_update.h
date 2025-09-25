@@ -18,7 +18,8 @@ extern "C"
     void ui_update_wifi_status(void);
     void show_popup(const char *title, const char *message, uint32_t timeout_ms);
     void close_popup(void);
-    void ui_update_time(uint8_t hour, uint8_t minute, uint8_t second);
+    void ui_update_time(int screen_id, uint8_t hour, uint8_t minute, uint8_t second);
+    void update_wifi_settings_screen(void);
 #ifdef __cplusplus
 }
 #endif

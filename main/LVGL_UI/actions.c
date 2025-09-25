@@ -6,6 +6,7 @@
 #include "screens.h"
 #include "ui.h"
 #include "ui_update.h"
+#include "PCF85063.h"
 
 #define TAG "ACTIONS"
 
@@ -117,8 +118,8 @@ static void popup_anim_cb(void *var, int32_t v)
 void action_wifi_scan_button(lv_event_t *e)
 {
     ESP_LOGI(TAG, "Scanning for WiFi networks...");
-    // wifi_scan_event_handler(1);
-    // wifi_scan_task_init(); // Initialize the WiFi scan task
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SCAN;
+    loadScreen(SCREEN_ID_SCREEN_WIFI_SCAN);
 }
 
 void action_wifi_connect_button(lv_event_t *e)
@@ -237,6 +238,13 @@ void action_checkbox_wifi_station(lv_event_t *e)
     {
         const char *txt = lv_checkbox_get_text(obj);
         const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        bool is_checked = (lv_obj_get_state(obj) & LV_STATE_CHECKED) ? true : false;
+        if (is_checked)
+        {
+            // set uncheck other checkbox
+            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
+        }
         // LV_LOG_USER("%s: %s", txt, state);
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
@@ -251,18 +259,13 @@ void action_checkbox_wifi_ap(lv_event_t *e)
         const char *txt = lv_checkbox_get_text(obj);
         const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
         // LV_LOG_USER("%s: %s", txt, state);
-        ESP_LOGI(TAG, "%s: %s", txt, state);
-    }
-}
-void action_checkbox_wifi_station_ap(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *obj = lv_event_get_target(e);
-    if (code == LV_EVENT_VALUE_CHANGED)
-    {
-        const char *txt = lv_checkbox_get_text(obj);
-        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
-        // LV_LOG_USER("%s: %s", txt, state);
+        bool is_checked = (lv_obj_get_state(obj) & LV_STATE_CHECKED) ? true : false;
+        if (is_checked)
+        {
+            // set uncheck other checkbox
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
+        }
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
 }
@@ -275,7 +278,49 @@ void action_checkbox_sync_time(lv_event_t *e)
     {
         const char *txt = lv_checkbox_get_text(obj);
         const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        device_system.auto_sync_time = (lv_obj_get_state(obj) & LV_STATE_CHECKED) ? true : false;
         // LV_LOG_USER("%s: %s", txt, state);
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
+}
+
+void action_rtc_setting_year_button(lv_event_t *e)
+{
+}
+
+void action_rtc_setting_hour_button(lv_event_t *e)
+{
+    // change to screen to set hour
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_CHANGE_CLOCK;
+    loadScreen(SCREEN_ID_SCREEN_RTC_CHANGE_CLOCK);
+}
+
+void action_back_to_rtc_settings(lv_event_t *e)
+{
+    // change to screen to set hour
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_RTC_SETTINGS);
+}
+void action_save_rtc_manual_button(lv_event_t *e)
+{
+    // get the time from the rollers
+    int hour_ten = lv_roller_get_selected(objects.rtc_roller_hour_ten);
+    int hour_unit = lv_roller_get_selected(objects.rtc_roller_hour_unit);
+    int minute_ten = lv_roller_get_selected(objects.rtc_roller_minute_ten);
+    int minute_unit = lv_roller_get_selected(objects.rtc_roller_minute_unit);
+    ESP_LOGI(TAG, "Time selected: %d%d:%d%d", hour_ten, hour_unit, minute_ten, minute_unit);
+    // back to rtc settings screen
+    datetime_t time;
+    time.hour = hour_ten * 10 + hour_unit;
+    time.minute = minute_ten * 10 + minute_unit;
+    time.second = 0;
+    PCF85063_Set_Time(time);
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_RTC_SETTINGS);
+}
+
+void action_back_to_wifi_settings(lv_event_t *e)
+{
+    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SETTINGS;
+    loadScreen(SCREEN_ID_SCREEN_WIFI_SETTINGS);
 }

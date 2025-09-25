@@ -91,7 +91,7 @@ void PCF85063_Read_Alarm(datetime_t *time);
 
 void datetime_to_str(char *datetime_str,datetime_t time);
 
-
+datetime_t PCF85063_GetDatetime(void);
 // weekday format
 // 0 - sunday
 // 1 - monday

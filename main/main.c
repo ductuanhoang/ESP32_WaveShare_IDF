@@ -21,6 +21,7 @@ static void wifi_init_sta(void);
 static void wifi_init_ap(void);
 bool is_start_webserver = false;
 FlowGlobalVariables_t flow_global_variables;
+System_t device_system;
 
 void Driver_Loop(void *parameter)
 {
@@ -29,7 +30,7 @@ void Driver_Loop(void *parameter)
     wifi_init_ap();
     while (1)
     {
-        // PCF85063_Loop();
+        PCF85063_Loop();
         if (is_start_webserver && is_ws_init_done() == false)
         {
             vTaskDelay(pdMS_TO_TICKS(10000));
@@ -53,6 +54,24 @@ void Display_Loop(void)
             last_wake_time = xTaskGetTickCount();
             show_graphics();
         }
+        static uint32_t update_rtc_time = 0;
+        if (xTaskGetTickCount() - update_rtc_time > pdMS_TO_TICKS(1000))
+        {
+            update_rtc_time = xTaskGetTickCount();
+            datetime_t datetime;
+            datetime = PCF85063_GetDatetime();
+            ui_update_time(flow_global_variables.current_screen_id,
+                           datetime.hour, datetime.minute, datetime.second);
+        }
+
+        static uint32_t update_wifi_settings_screen_time = 0;
+        if (xTaskGetTickCount() - update_wifi_settings_screen_time > pdMS_TO_TICKS(100))
+        {
+            update_wifi_settings_screen_time = xTaskGetTickCount();
+            if (flow_global_variables.current_screen_id == SCREEN_ID_SCREEN_WIFI_SETTINGS)
+                update_wifi_settings_screen();
+        }
+
         if (lv_disp_get_default() != NULL)
         {
             lv_timer_handler();
@@ -66,7 +85,7 @@ void Driver_Init(void)
 
     PWR_Init();
     I2C_Init();
-    // PCF85063_Init();
+    PCF85063_Init();
     ms5837_sensor_init();
     xTaskCreate(Driver_Loop, "Driver_Loop", 4096 * 2, NULL, 5, NULL);
 }
@@ -203,6 +222,14 @@ static void wifi_init_sta(void)
     esp_wifi_start();
 
     ESP_LOGI(TAG, "Connecting to WiFi SSID:%s", WIFI_SSID);
+}
+
+static void wifi_deinit(void)
+{
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    esp_event_loop_delete_default();
+    esp_netif_deinit();
 }
 
 static void wifi_init_ap(void)

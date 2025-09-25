@@ -44,6 +44,11 @@ void PCF85063_Loop(void)
 {
   PCF85063_Read_Time(&datetime);
 }
+
+datetime_t PCF85063_GetDatetime(void)
+{
+  return datetime;
+}
 /******************************************************************************
 function:	Reset PCF85063
 parameter:

@@ -5,6 +5,7 @@
 #include "lvgl.h"
 #include "common.h"
 #include "images.h"
+#include "PCF85063.h"
 // #include "wifi_user.h"
 // #include "log.h"
 
@@ -271,24 +272,25 @@ void ui_update_wifi_status(void)
     // }
 }
 
-static lv_obj_t *g_popup = NULL;   // biến toàn cục hoặc static để lưu popup
+static lv_obj_t *g_popup = NULL; // biến toàn cục hoặc static để lưu popup
 
 // Callback để auto-close popup
 static void popup_timeout_cb(lv_timer_t *timer)
 {
     lv_obj_t *popup = (lv_obj_t *)timer->user_data;
-    if (popup && lv_obj_is_valid(popup)) {
+    if (popup && lv_obj_is_valid(popup))
+    {
         lv_msgbox_close(popup);
     }
     lv_timer_del(timer); // Xóa timer sau khi dùng
     g_popup = NULL;
 }
 
-
 void show_popup(const char *title, const char *message, uint32_t timeout_ms)
 {
     // Nếu đã có popup cũ thì đóng trước
-    if (g_popup && lv_obj_is_valid(g_popup)) {
+    if (g_popup && lv_obj_is_valid(g_popup))
+    {
         lv_msgbox_close(g_popup);
         g_popup = NULL;
     }
@@ -315,18 +317,40 @@ void show_popup(const char *title, const char *message, uint32_t timeout_ms)
 
 void close_popup(void)
 {
-    if (g_popup && lv_obj_is_valid(g_popup)) {
+    if (g_popup && lv_obj_is_valid(g_popup))
+    {
         lv_msgbox_close(g_popup);
         g_popup = NULL;
     }
 }
 
-
-void ui_update_time(uint8_t hour, uint8_t minute, uint8_t second)
+static bool is_set_check_box = false;
+void ui_update_time(int screen_id, uint8_t hour, uint8_t minute, uint8_t second)
 {
     char time_str[12]; // HH:MM:SS format
-    snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d", hour, minute, second);
-    lv_label_set_text(objects.current_time, time_str);
+    switch (screen_id)
+    {
+    case SCREEN_ID_MAIN:
+        snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d", hour, minute, second);
+        lv_label_set_text(objects.current_time, time_str);
+        is_set_check_box = false;
+        break;
+    case SCREEN_ID_SCREEN_RTC_SETTINGS:
+        snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d", hour, minute, second);
+        lv_label_set_text(objects.rtc_setting_hour_label, time_str);
+        // set check box state
+        if (is_set_check_box == false)
+        {
+            is_set_check_box = true;
+            if (device_system.auto_sync_time)
+                lv_obj_add_state(objects.checkbox_sync_time, LV_STATE_CHECKED);
+            else
+                lv_obj_clear_state(objects.checkbox_sync_time, LV_STATE_CHECKED);
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 static void update_temperature_label(lv_obj_t *label, float temperature)
@@ -376,5 +400,34 @@ void wifi_scan_event_handler(uint8_t id)
     else if (id == 2)
     {
         show_popup("WiFi Connection", "Waiting for connection...", 1000);
+    }
+}
+
+bool is_first_load_wifi_screen = true;
+
+void update_wifi_settings_screen(void)
+{
+    if (is_first_load_wifi_screen)
+    {
+        is_first_load_wifi_screen = false;
+        // Clear the input field and dropdown after returning to main screen
+        if (device_system.wifi_mode == WIFI_CONFIG_MODE_STATION)
+        {
+            lv_obj_add_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            // update ssid connect to and ip
+            lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ssid);
+            lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ip);
+
+        }
+        else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
+        {
+            // update ssid connect to and ip
+            lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
+            lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
+
+            lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+        }
     }
 }
