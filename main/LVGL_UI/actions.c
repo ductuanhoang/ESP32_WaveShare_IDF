@@ -7,6 +7,7 @@
 #include "ui.h"
 #include "ui_update.h"
 #include "PCF85063.h"
+#include "user_wifi.h"
 
 #define TAG "ACTIONS"
 
@@ -120,6 +121,7 @@ void action_wifi_scan_button(lv_event_t *e)
     ESP_LOGI(TAG, "Scanning for WiFi networks...");
     flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SCAN;
     loadScreen(SCREEN_ID_SCREEN_WIFI_SCAN);
+    wifi_scan_action();
 }
 
 void action_wifi_connect_button(lv_event_t *e)
@@ -264,7 +266,29 @@ void action_checkbox_wifi_ap(lv_event_t *e)
         {
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
+        }
+        ESP_LOGI(TAG, "%s: %s", txt, state);
+    }
+}
+
+void action_checkbox_wifi_off(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *obj = lv_event_get_target(e);
+    if (code == LV_EVENT_VALUE_CHANGED)
+    {
+        const char *txt = lv_checkbox_get_text(obj);
+        const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
+        // LV_LOG_USER("%s: %s", txt, state);
+        bool is_checked = (lv_obj_get_state(obj) & LV_STATE_CHECKED) ? true : false;
+        if (is_checked)
+        {
+            // set uncheck other checkbox
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_OFF;
         }
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }

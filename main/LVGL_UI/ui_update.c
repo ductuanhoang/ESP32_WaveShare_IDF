@@ -415,19 +415,31 @@ void update_wifi_settings_screen(void)
         {
             lv_obj_add_state(objects.wifi_option_station, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
+            // set label of button is "Scan Networks"
+            lv_label_set_text(objects.label_button_wifi_settings, "Scan Networks");
             // update ssid connect to and ip
-            lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ssid);
-            lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ip);
+            // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ssid);
+            // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ip);
 
         }
         else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
         {
             // update ssid connect to and ip
-            lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
-            lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
+            // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
+            // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
+            lv_label_set_text(objects.label_button_wifi_settings, "Setup Networks");
 
             lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
+        }
+        else if (device_system.wifi_mode == WIFI_CONFIG_OFF)
+        {
+            lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+
         }
     }
 }

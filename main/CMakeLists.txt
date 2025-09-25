@@ -26,6 +26,7 @@ SRCS
      "./MS5837/ms5837_sensor.cpp"
      "./WS_SERVER/ws_server.c"
      "./Sntp/sntp_time.cpp"
+     "./WIFI/user_wifi.c"
 
 INCLUDE_DIRS 
      "./LCD_Driver/Vernon_ST7789T" 
@@ -41,6 +42,7 @@ INCLUDE_DIRS
      "./MS5837"
      "./WS_SERVER"
      "./Sntp"
+     "./WIFI"
      "."
 )
 

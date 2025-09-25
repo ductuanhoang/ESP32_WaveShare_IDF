@@ -12,13 +12,12 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
+#include "user_wifi.h"
 
 #define TAG "main"
-
+static void device_data_init(void);
 static void show_graphics(void);
 static void common_data_init(void);
-static void wifi_init_sta(void);
-static void wifi_init_ap(void);
 bool is_start_webserver = false;
 FlowGlobalVariables_t flow_global_variables;
 System_t device_system;
@@ -92,9 +91,11 @@ void Driver_Init(void)
 
 void app_main(void)
 {
+    device_data_init();
     nvs_flash_init();
     common_data_init();
     Driver_Init();
+    wifi_init_sta();
 
     LCD_Init();
     LVGL_Init(); // returns the screen object
@@ -155,114 +156,15 @@ static void common_data_init(void)
     flow_global_variables.current_screen_id = SCREEN_ID_MAIN; // Initialize to main screen
 }
 
-// Cấu hình WiFi
-#define WIFI_SSID "1610 B2"
-#define WIFI_PASS "123456789"
 
-static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+
+static void device_data_init(void)
 {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
-    {
-        esp_wifi_connect();
-    }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
-    {
-        ESP_LOGW(TAG, "WiFi disconnected, retrying...");
-        esp_wifi_connect();
-    }
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
-    {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        char ip_str[16];
-        esp_ip4addr_ntoa(&event->ip_info.ip, ip_str, sizeof(ip_str));
-        ESP_LOGI(TAG, "WiFi connected, got IP: %s", ip_str);
-        // start web server here if needed
-        ESP_LOGI(TAG, "Starting webserver");
-        is_start_webserver = true;
-    }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
-    {
-        wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
-        ESP_LOGI(TAG, "Device connected to AP: AID=%d, MAC=%02x:%02x:%02x:%02x:%02x:%02x",
-                 event->aid,
-                 event->mac[0], event->mac[1], event->mac[2],
-                 event->mac[3], event->mac[4], event->mac[5]);
-        // You can add your custom logic here (e.g., start webserver, notify UI, etc.)
-        if (is_ws_init_done() == false)
-            ws_server_init();
-    }
-}
-
-static void wifi_init_sta(void)
-{
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
-
-    // Register WiFi and IP event handler
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id);
-    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_got_ip);
-
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = WIFI_SSID,
-            .password = WIFI_PASS,
-            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-        },
-    };
-
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-    esp_wifi_start();
-
-    ESP_LOGI(TAG, "Connecting to WiFi SSID:%s", WIFI_SSID);
-}
-
-static void wifi_deinit(void)
-{
-    esp_wifi_stop();
-    esp_wifi_deinit();
-    esp_event_loop_delete_default();
-    esp_netif_deinit();
-}
-
-static void wifi_init_ap(void)
-{
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_ap();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
-
-    // Register WiFi event handler
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id);
-
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = "ESP32-Access-Point",
-            .ssid_len = strlen("ESP32-Access-Point"),
-            .channel = 1,
-            .password = "123456789",
-            .max_connection = 4,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK},
-    };
-    if (strlen("123456789") == 0)
-    {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-    }
-
-    esp_wifi_set_mode(WIFI_MODE_AP);
-    esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
-    esp_wifi_start();
-
-    ESP_LOGI(TAG, "WiFi AP started. SSID:%s password:%s", "ESP32-Access-Point", "123456789");
+    device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
+    strcpy(device_system.wifi_ssid, "");
+    strcpy(device_system.wifi_ip, "");
+    strcpy(device_system.wifi_ap_ssid, "ESP32-Force-Five");
+    strcpy(device_system.wifi_ap_ip, "");
+    device_system.auto_sync_time = false;
+    device_system.is_wifi_connected = false;
 }

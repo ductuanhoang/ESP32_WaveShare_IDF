@@ -7,7 +7,6 @@
 #include "vars.h"
 #include "styles.h"
 #include "ui.h"
-#include "user_keyboard.h"
 
 #include <string.h>
 
@@ -430,7 +429,7 @@ void create_screen_screen_wifi_settings() {
             // wifi_option_station
             lv_obj_t *obj = lv_checkbox_create(parent_obj);
             objects.wifi_option_station = obj;
-            lv_obj_set_pos(obj, 18, 58);
+            lv_obj_set_pos(obj, 18, 48);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_checkbox_set_text(obj, "Wi-Fi Station");
             lv_obj_add_event_cb(obj, action_checkbox_wifi_station, LV_EVENT_VALUE_CHANGED, (void *)0);
@@ -439,20 +438,24 @@ void create_screen_screen_wifi_settings() {
             // wifi_option_ap
             lv_obj_t *obj = lv_checkbox_create(parent_obj);
             objects.wifi_option_ap = obj;
-            lv_obj_set_pos(obj, 18, 103);
+            lv_obj_set_pos(obj, 18, 80);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_checkbox_set_text(obj, "Wi-Fi AP");
             lv_obj_add_event_cb(obj, action_checkbox_wifi_ap, LV_EVENT_VALUE_CHANGED, (void *)0);
         }
         {
+            // button_wifi_settings
             lv_obj_t *obj = lv_btn_create(parent_obj);
-            lv_obj_set_pos(obj, 94, 148);
+            objects.button_wifi_settings = obj;
+            lv_obj_set_pos(obj, 94, 159);
             lv_obj_set_size(obj, 149, 31);
             lv_obj_add_event_cb(obj, action_wifi_scan_button, LV_EVENT_PRESSED, (void *)0);
             {
                 lv_obj_t *parent_obj = obj;
                 {
+                    // label_button_wifi_settings
                     lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.label_button_wifi_settings = obj;
                     lv_obj_set_pos(obj, 0, 0);
                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                     lv_label_set_text(obj, "Scan Networks");
@@ -522,6 +525,15 @@ void create_screen_screen_wifi_settings() {
             lv_obj_set_size(obj, LV_SIZE_CONTENT, 42);
             lv_imgbtn_set_src(obj, LV_IMGBTN_STATE_RELEASED, NULL, &img_logo, NULL);
             lv_imgbtn_set_src(obj, LV_IMGBTN_STATE_PRESSED, NULL, &img_logo, NULL);
+        }
+        {
+            // wifi_option_off
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.wifi_option_off = obj;
+            lv_obj_set_pos(obj, 18, 111);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "Wi-Fi Off");
+            lv_obj_add_event_cb(obj, action_checkbox_wifi_off, LV_EVENT_VALUE_CHANGED, (void *)0);
         }
     }
 }
@@ -712,8 +724,7 @@ void create_screen_screen_wifi_scan() {
     {
         lv_obj_t *parent_obj = obj;
         {
-            // lv_obj_t *obj = lv_keyboard_create(parent_obj);
-            lv_obj_t *obj = my_keyboard_create(parent_obj);
+            lv_obj_t *obj = lv_keyboard_create(parent_obj);
             lv_obj_set_pos(obj, 10, 115);
             lv_obj_set_size(obj, 300, 120);
             lv_obj_add_event_cb(obj, action_keyboard_event, LV_EVENT_VALUE_CHANGED, (void *)0);
@@ -721,7 +732,7 @@ void create_screen_screen_wifi_scan() {
         }
         {
             lv_obj_t *obj = lv_btn_create(parent_obj);
-            lv_obj_set_pos(obj, 254, 49);
+            lv_obj_set_pos(obj, 252, 49);
             lv_obj_set_size(obj, 67, 36);
             lv_obj_add_event_cb(obj, action_wifi_connect_button, LV_EVENT_PRESSED, (void *)0);
             {

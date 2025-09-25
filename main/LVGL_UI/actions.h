@@ -31,6 +31,7 @@ extern void action_rtc_setting_hour_button(lv_event_t * e);
 extern void action_back_to_rtc_settings(lv_event_t * e);
 extern void action_save_rtc_manual_button(lv_event_t * e);
 extern void action_back_to_wifi_settings(lv_event_t * e);
+extern void action_checkbox_wifi_off(lv_event_t * e);
 
 
 #ifdef __cplusplus

@@ -22,6 +22,7 @@ extern "C"
     {
         WIFI_CONFIG_MODE_STATION = 0,
         WIFI_CONFIG_MODE_AP = 1,
+        WIFI_CONFIG_OFF = 2
     } wifi_config_mode_t;
     typedef enum
     {

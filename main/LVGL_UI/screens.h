@@ -34,8 +34,11 @@ typedef struct _objects_t {
     lv_obj_t *main_lable_unit_1;
     lv_obj_t *wifi_option_station;
     lv_obj_t *wifi_option_ap;
+    lv_obj_t *button_wifi_settings;
+    lv_obj_t *label_button_wifi_settings;
     lv_obj_t *wifi_setting_ssid;
     lv_obj_t *wifi_setting_ip;
+    lv_obj_t *wifi_option_off;
     lv_obj_t *rtc_setting_hour;
     lv_obj_t *rtc_setting_hour_label;
     lv_obj_t *rtc_roller_hour_ten;
