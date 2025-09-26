@@ -27,6 +27,8 @@ SRCS
      "./WS_SERVER/ws_server.c"
      "./Sntp/sntp_time.cpp"
      "./WIFI/user_wifi.c"
+     "./Events/f9_event.c"
+     "./PC_COM/pc_com.c"
 
 INCLUDE_DIRS 
      "./LCD_Driver/Vernon_ST7789T" 
@@ -43,6 +45,8 @@ INCLUDE_DIRS
      "./WS_SERVER"
      "./Sntp"
      "./WIFI"
+     "./Events"
+     "./PC_COM"
      "."
 )
 

@@ -13,6 +13,7 @@ extern "C"
     void ws_server_init(void);
     bool is_ws_init_done(void);
     void ws_server_stop(void);
+    void ws_server_start(void);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

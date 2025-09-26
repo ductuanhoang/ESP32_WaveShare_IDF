@@ -13,29 +13,24 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "user_wifi.h"
+#include "f9_event.h"
+#include "pc_com.h"
 
 #define TAG "main"
 static void device_data_init(void);
 static void show_graphics(void);
 static void common_data_init(void);
+static void user_wifi_event_handler(void *handler_arg, esp_event_base_t base, int32_t id, void *event_data);
+static char *get_device_data_packet(const char *time_stamp, float temperature, float pressure);
 bool is_start_webserver = false;
 FlowGlobalVariables_t flow_global_variables;
 System_t device_system;
 
 void Driver_Loop(void *parameter)
 {
-    // Wireless_Init();
-    // wifi_init_sta();
-    wifi_init_ap();
     while (1)
     {
         PCF85063_Loop();
-        if (is_start_webserver && is_ws_init_done() == false)
-        {
-            vTaskDelay(pdMS_TO_TICKS(10000));
-            ws_server_init();
-            is_start_webserver = false;
-        }
         PWR_Loop();
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -69,6 +64,25 @@ void Display_Loop(void)
             update_wifi_settings_screen_time = xTaskGetTickCount();
             if (flow_global_variables.current_screen_id == SCREEN_ID_SCREEN_WIFI_SETTINGS)
                 update_wifi_settings_screen();
+            else if (flow_global_variables.current_screen_id == SCREEN_ID_MAIN)
+            {
+                ui_update_wifi_status();
+                reset_wifi_settings_screen();
+            }
+            else
+            {
+                reset_wifi_settings_screen();
+            }
+        }
+        static uint32_t send_data_interval = 0;
+        if (xTaskGetTickCount() - send_data_interval > pdMS_TO_TICKS(2000))
+        {
+            send_data_interval = xTaskGetTickCount();
+            char buffer[128];
+            datetime_t datetime;
+            datetime = PCF85063_GetDatetime();
+            snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d",datetime.hour, datetime.minute, datetime.second);
+            pc_com_send_data(get_device_data_packet(buffer, get_temperature_celsius(), get_pressure_mbar()), 128);
         }
 
         if (lv_disp_get_default() != NULL)
@@ -93,9 +107,15 @@ void app_main(void)
 {
     device_data_init();
     nvs_flash_init();
+    ws_server_init();
+    f9_event_init();
+    f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_CONNECTED);
+    f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_DISCONNECTED);
+    f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_GOT_IP);
     common_data_init();
+    pc_com_init();
     Driver_Init();
-    wifi_init_sta();
+    wifi_init_sta(device_system.wifi_ssid, device_system.wifi_pass);
 
     LCD_Init();
     LVGL_Init(); // returns the screen object
@@ -156,15 +176,49 @@ static void common_data_init(void)
     flow_global_variables.current_screen_id = SCREEN_ID_MAIN; // Initialize to main screen
 }
 
-
-
 static void device_data_init(void)
 {
     device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
-    strcpy(device_system.wifi_ssid, "");
-    strcpy(device_system.wifi_ip, "");
-    strcpy(device_system.wifi_ap_ssid, "ESP32-Force-Five");
-    strcpy(device_system.wifi_ap_ip, "");
+    // get ssid and password from the internal flash if needed
+    // for now, use hardcoded values
+    snprintf(device_system.wifi_ssid, sizeof(device_system.wifi_ssid), "%s", WIFI_SSID);
+    snprintf(device_system.wifi_pass, sizeof(device_system.wifi_pass), "%s", WIFI_PASS);
+    snprintf(device_system.wifi_ip, sizeof(device_system.wifi_ip), "%s", "");
+    snprintf(device_system.wifi_ap_ssid, sizeof(device_system.wifi_ap_ssid), "ESP32-Force-Five");
+    snprintf(device_system.wifi_ap_ip, sizeof(device_system.wifi_ap_ip), "%s", "");
     device_system.auto_sync_time = false;
     device_system.is_wifi_connected = false;
+}
+
+static void user_wifi_event_handler(void *handler_arg, esp_event_base_t base, int32_t id, void *event_data)
+{
+    switch (id)
+    {
+    case E_EVENT_WIFI_CONNECTED:
+        ESP_LOGI(TAG, "WiFi connected event received");
+        device_system.is_wifi_connected = true;
+        break;
+    case E_EVENT_WIFI_DISCONNECTED:
+        ESP_LOGI(TAG, "WiFi disconnected event received");
+        device_system.is_wifi_connected = false;
+        break;
+    case E_EVENT_WIFI_GOT_IP:
+        ESP_LOGI(TAG, "WiFi got IP event received");
+        // start webserver when got IP
+        ESP_LOGI(TAG, "Free heap: %ld", esp_get_free_heap_size());
+        ws_server_start();
+        break;
+    default:
+        ESP_LOGW(TAG, "Unhandled WiFi event ID: %ld", id);
+        break;
+    }
+}
+
+static char *get_device_data_packet(const char *time_stamp, float temperature, float pressure)
+{
+    // #,TIMESTAMP,PRESSURE,TEMPERATURE,;CRLF
+    // Create a packet with device data
+    static char packet[128];
+    snprintf(packet, sizeof(packet), "#,%s,%.2f,%.2f;\r\n", time_stamp, pressure, temperature);
+    return packet;
 }

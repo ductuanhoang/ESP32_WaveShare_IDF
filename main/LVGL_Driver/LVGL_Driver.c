@@ -98,12 +98,21 @@ void LVGL_Init(void)
     ESP_LOGI(TAG_LVGL, "Initialize LVGL library");
     lv_init();
 
-    buf1 = heap_caps_malloc(LVGL_BUF_LEN, MALLOC_CAP_SPIRAM);
-    assert(buf1);
-    buf2 = heap_caps_malloc(LVGL_BUF_LEN, MALLOC_CAP_SPIRAM);
-    assert(buf2);
-    lv_disp_draw_buf_init(&disp_buf, buf1, buf2, LVGL_BUF_LEN); // initialize LVGL draw buffers
+    // buf1 = heap_caps_malloc(LVGL_BUF_LEN, MALLOC_CAP_SPIRAM);
+    // assert(buf1);
+    // buf2 = heap_caps_malloc(LVGL_BUF_LEN, MALLOC_CAP_SPIRAM);
+    // assert(buf2);
+    // lv_disp_draw_buf_init(&disp_buf, buf1, buf2, LVGL_BUF_LEN); // initialize LVGL draw buffers
 
+    buf1 = heap_caps_malloc(LVGL_BUF_LEN * sizeof(lv_color_t),
+                            MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    assert(buf1);
+
+    buf2 = heap_caps_malloc(LVGL_BUF_LEN * sizeof(lv_color_t),
+                            MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    assert(buf2);
+
+    lv_disp_draw_buf_init(&disp_buf, buf1, buf2, LVGL_BUF_LEN);
     ESP_LOGI(TAG_LVGL, "Register display driver to LVGL");
     lv_disp_drv_init(&disp_drv); // Create a new screen object and initialize the associated device
     disp_drv.hor_res = EXAMPLE_LCD_H_RES;

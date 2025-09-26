@@ -98,7 +98,6 @@ esp_err_t www_spiffs_init()
     return ESP_OK;
 }
 
-
 // Static file handler for serving HTML from SPIFFS
 static esp_err_t static_file_handler(httpd_req_t *req)
 {
@@ -147,13 +146,13 @@ static esp_err_t static_file_handler(httpd_req_t *req)
 }
 
 // Start webserver
-static httpd_handle_t start_webserver(void)
+static httpd_handle_t start_webserver_handler(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 5; // TODO: this is config max uri handlers
     config.lru_purge_enable = true;
     config.stack_size = 8192; // Increase stack size if needed
-    config.core_id = 0; // Run on core 0
+    config.core_id = 0;       // Run on core 0
 
     if (httpd_start(&server, &config) == ESP_OK)
     {
@@ -192,21 +191,28 @@ static httpd_handle_t start_webserver(void)
     return NULL;
 }
 
-static void connect_handler(void *arg, esp_event_base_t event_base,
-                            int32_t event_id, void *event_data)
-{
-    if (server == NULL)
-    {
-        ESP_LOGI(TAG, "Starting webserver");
-        server = start_webserver();
-    }
-}
-
 void ws_server_init(void)
 {
     esp_err_t ret = www_spiffs_init();
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, NULL));
 }
+
+void ws_server_task(void *pvParameters)
+{
+
+    server = start_webserver_handler();
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    vTaskDelete(NULL);
+}
+
+void ws_server_start(void)
+{
+    xTaskCreate(&ws_server_task, "ws_server_task", 8192, NULL, 5, NULL);
+}
+
+
 
 bool is_ws_init_done(void)
 {

@@ -42,6 +42,7 @@ extern "C"
         wifi_config_mode_t wifi_mode;
         bool auto_sync_time;
         char wifi_ssid[32];
+        char wifi_pass[32];
         char wifi_ip[16];
         bool is_wifi_connected;
         char wifi_ap_ssid[32];

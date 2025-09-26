@@ -148,6 +148,12 @@ void action_wifi_connect_button(lv_event_t *e)
     // wifi_scan_event_handler(2);
     // wifi_user_connect(ssid, password);
     // Clear the input field and dropdown after connection
+    wifi_user_disconnect();
+    wifi_user_connect(ssid, password);
+    // set to device system
+    snprintf(device_system.wifi_ssid, sizeof(device_system.wifi_ssid), "%s", ssid);
+    snprintf(device_system.wifi_pass, sizeof(device_system.wifi_pass), "%s", password);
+    ESP_LOGI(TAG, "WiFi credentials set in device system.");
     lv_textarea_set_text(objects.input_password_field, "");
     lv_dropdown_clear_options(objects.input_wifi_list);
     flow_global_variables.current_screen_id = SCREEN_ID_MAIN;
@@ -280,7 +286,7 @@ void action_checkbox_wifi_ap(lv_event_t *e)
             lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
         }
-        else 
+        else
         {
             // set state to on
             lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
@@ -307,7 +313,7 @@ void action_checkbox_wifi_off(lv_event_t *e)
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_OFF;
         }
-        else 
+        else
         {
             // set state to on
             lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
@@ -387,13 +393,13 @@ void action_rtc_setting_hour_ten_changed(lv_event_t *e)
     // get the value from the roller
     int hour_ten = lv_roller_get_selected(objects.rtc_roller_hour_ten);
     ESP_LOGI(TAG, "Hour ten changed: %d", hour_ten);
-    if(hour_ten == 2)
+    if (hour_ten == 2)
     {
         // set the max value of hour unit to 3
         lv_roller_set_options(objects.rtc_roller_hour_unit, "0\n1\n2\n3", LV_ROLLER_MODE_NORMAL);
         // if the current value is greater than 3, set it to 3
         int current_hour_unit = lv_roller_get_selected(objects.rtc_roller_hour_unit);
-        if(current_hour_unit > 3)
+        if (current_hour_unit > 3)
             lv_roller_set_selected(objects.rtc_roller_hour_unit, 3, LV_ANIM_OFF);
     }
     else
@@ -402,7 +408,6 @@ void action_rtc_setting_hour_ten_changed(lv_event_t *e)
         lv_roller_set_options(objects.rtc_roller_hour_unit, "0\n1\n2\n3\n4\n5\n6\n7\n8\n9", LV_ROLLER_MODE_NORMAL);
     }
 }
-
 
 void action_rtc_setting_hour_unit_changed(lv_event_t *e)
 {

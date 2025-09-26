@@ -6,6 +6,7 @@
 #include "common.h"
 #include "images.h"
 #include "PCF85063.h"
+#include "user_wifi.h"
 // #include "wifi_user.h"
 // #include "log.h"
 
@@ -262,14 +263,14 @@ void chart_add_data(lv_obj_t *chart, int32_t value, uint8_t screen_id, uint8_t c
 
 void ui_update_wifi_status(void)
 {
-    // if (is_wifi_connected())
-    // {
-    //     lv_img_set_src(objects.wifi_picture, &img_wifi_connected);
-    // }
-    // else
-    // {
-    //     lv_img_set_src(objects.wifi_picture, &img_wifi_disconnected);
-    // }
+    if (get_is_wifi_connected())
+    {
+        lv_img_set_src(objects.wifi_picture, &img_wifi_connected);
+    }
+    else
+    {
+        lv_img_set_src(objects.wifi_picture, &img_wifi_disconnected);
+    }
 }
 
 static lv_obj_t *g_popup = NULL; // biến toàn cục hoặc static để lưu popup
@@ -419,27 +420,40 @@ void update_wifi_settings_screen(void)
             // set label of button is "Scan Networks"
             lv_label_set_text(objects.label_button_wifi_settings, "Scan Networks");
             // update ssid connect to and ip
-            // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ssid);
-            // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ip);
-
+            char buf[64];
+            snprintf(buf, sizeof(buf), "SSID: %s", device_system.wifi_ssid);
+            lv_label_set_text(objects.wifi_setting_ssid, buf);
+            if (get_is_wifi_connected() == false)
+                snprintf(buf, sizeof(buf), "IP: Not connected");
+            else
+                snprintf(buf, sizeof(buf), "IP: %s", device_system.wifi_ip);
+            lv_label_set_text(objects.wifi_setting_ip, buf);
         }
-        else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
-        {
-            // update ssid connect to and ip
-            // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
-            // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
-            lv_label_set_text(objects.label_button_wifi_settings, "Setup Networks");
+        // disable other options for now
+        lv_obj_add_state(objects.wifi_option_ap, LV_STATE_DISABLED);
+        lv_obj_add_state(objects.wifi_option_off, LV_STATE_DISABLED);
+        // else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
+        // {
+        //     // update ssid connect to and ip
+        //     // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
+        //     // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
+        //     lv_label_set_text(objects.label_button_wifi_settings, "Setup Networks");
 
-            lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
-            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
-            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
-        }
-        else if (device_system.wifi_mode == WIFI_CONFIG_OFF)
-        {
-            lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
-            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
-            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+        //     lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+        //     lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+        //     lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
+        // }
+        // else if (device_system.wifi_mode == WIFI_CONFIG_OFF)
+        // {
+        //     lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
+        //     lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+        //     lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
 
-        }
+        // }
     }
+}
+
+void reset_wifi_settings_screen(void)
+{
+    is_first_load_wifi_screen = true;
 }
