@@ -121,6 +121,8 @@ void action_wifi_scan_button(lv_event_t *e)
     ESP_LOGI(TAG, "Scanning for WiFi networks...");
     flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SCAN;
     loadScreen(SCREEN_ID_SCREEN_WIFI_SCAN);
+    // clear the dropdown options
+    lv_dropdown_clear_options(objects.input_wifi_list);
     wifi_scan_action();
 }
 
@@ -228,8 +230,10 @@ void action_rtc_set_time_manual(lv_event_t *e)
 }
 void action_wifi_save(lv_event_t *e)
 {
-    flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SETTINGS;
-    loadScreen(SCREEN_ID_SCREEN_WIFI_SETTINGS);
+    // save wifi settings
+    ESP_LOGI(TAG, "Saving WiFi settings...");
+    flow_global_variables.current_screen_id = SCREEN_ID_MAIN;
+    loadScreen(SCREEN_ID_MAIN);
 }
 
 void action_checkbox_wifi_station(lv_event_t *e)
@@ -245,6 +249,13 @@ void action_checkbox_wifi_station(lv_event_t *e)
         {
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
+        }
+        else
+        {
+            // set state to on
+            lv_obj_add_state(objects.wifi_option_station, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
         }
         // LV_LOG_USER("%s: %s", txt, state);
@@ -269,6 +280,12 @@ void action_checkbox_wifi_ap(lv_event_t *e)
             lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
         }
+        else 
+        {
+            // set state to on
+            lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
+        }
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
 }
@@ -288,6 +305,12 @@ void action_checkbox_wifi_off(lv_event_t *e)
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            device_system.wifi_mode = WIFI_CONFIG_OFF;
+        }
+        else 
+        {
+            // set state to on
+            lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
             device_system.wifi_mode = WIFI_CONFIG_OFF;
         }
         ESP_LOGI(TAG, "%s: %s", txt, state);
@@ -317,6 +340,16 @@ void action_rtc_setting_hour_button(lv_event_t *e)
     // change to screen to set hour
     flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_RTC_CHANGE_CLOCK;
     loadScreen(SCREEN_ID_SCREEN_RTC_CHANGE_CLOCK);
+    // set the roller to current time
+    datetime_t current_time = PCF85063_GetDatetime();
+    int hour_ten = current_time.hour / 10;
+    int hour_unit = current_time.hour % 10;
+    int minute_ten = current_time.minute / 10;
+    int minute_unit = current_time.minute % 10;
+    lv_roller_set_selected(objects.rtc_roller_hour_ten, hour_ten, LV_ANIM_OFF);
+    lv_roller_set_selected(objects.rtc_roller_hour_unit, hour_unit, LV_ANIM_OFF);
+    lv_roller_set_selected(objects.rtc_roller_minute_ten, minute_ten, LV_ANIM_OFF);
+    lv_roller_set_selected(objects.rtc_roller_minute_unit, minute_unit, LV_ANIM_OFF);
 }
 
 void action_back_to_rtc_settings(lv_event_t *e)
@@ -347,4 +380,33 @@ void action_back_to_wifi_settings(lv_event_t *e)
 {
     flow_global_variables.current_screen_id = SCREEN_ID_SCREEN_WIFI_SETTINGS;
     loadScreen(SCREEN_ID_SCREEN_WIFI_SETTINGS);
+}
+
+void action_rtc_setting_hour_ten_changed(lv_event_t *e)
+{
+    // get the value from the roller
+    int hour_ten = lv_roller_get_selected(objects.rtc_roller_hour_ten);
+    ESP_LOGI(TAG, "Hour ten changed: %d", hour_ten);
+    if(hour_ten == 2)
+    {
+        // set the max value of hour unit to 3
+        lv_roller_set_options(objects.rtc_roller_hour_unit, "0\n1\n2\n3", LV_ROLLER_MODE_NORMAL);
+        // if the current value is greater than 3, set it to 3
+        int current_hour_unit = lv_roller_get_selected(objects.rtc_roller_hour_unit);
+        if(current_hour_unit > 3)
+            lv_roller_set_selected(objects.rtc_roller_hour_unit, 3, LV_ANIM_OFF);
+    }
+    else
+    {
+        // set the max value of hour unit to 9
+        lv_roller_set_options(objects.rtc_roller_hour_unit, "0\n1\n2\n3\n4\n5\n6\n7\n8\n9", LV_ROLLER_MODE_NORMAL);
+    }
+}
+
+
+void action_rtc_setting_hour_unit_changed(lv_event_t *e)
+{
+    // get the value from the roller
+    int hour_unit = lv_roller_get_selected(objects.rtc_roller_hour_unit);
+    ESP_LOGI(TAG, "Hour unit changed: %d", hour_unit);
 }

@@ -7,7 +7,7 @@
 #include "vars.h"
 #include "styles.h"
 #include "ui.h"
-
+#include "user_keyboard.h"
 #include <string.h>
 
 objects_t objects;
@@ -661,6 +661,7 @@ void create_screen_screen_rtc_change_clock() {
             lv_obj_set_pos(obj, 46, 77);
             lv_obj_set_size(obj, 42, 87);
             lv_roller_set_options(obj, "0\n1\n2", LV_ROLLER_MODE_NORMAL);
+            lv_obj_add_event_cb(obj, action_rtc_setting_hour_ten_changed, LV_EVENT_VALUE_CHANGED, (void *)0);
         }
         {
             // rtc_roller_hour_unit
@@ -669,6 +670,7 @@ void create_screen_screen_rtc_change_clock() {
             lv_obj_set_pos(obj, 105, 77);
             lv_obj_set_size(obj, 42, 87);
             lv_roller_set_options(obj, "0\n1\n2\n3\n4\n5\n6\n7\n8\n9", LV_ROLLER_MODE_NORMAL);
+            lv_obj_add_event_cb(obj, action_rtc_setting_hour_unit_changed, LV_EVENT_VALUE_CHANGED, (void *)0);
         }
         {
             // rtc_roller_minute_ten
@@ -724,7 +726,8 @@ void create_screen_screen_wifi_scan() {
     {
         lv_obj_t *parent_obj = obj;
         {
-            lv_obj_t *obj = lv_keyboard_create(parent_obj);
+            // lv_obj_t *obj = lv_keyboard_create(parent_obj);
+            lv_obj_t *obj = my_keyboard_create(parent_obj);
             lv_obj_set_pos(obj, 10, 115);
             lv_obj_set_size(obj, 300, 120);
             lv_obj_add_event_cb(obj, action_keyboard_event, LV_EVENT_VALUE_CHANGED, (void *)0);
