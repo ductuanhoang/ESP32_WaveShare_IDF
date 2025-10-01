@@ -29,6 +29,7 @@ SRCS
      "./WIFI/user_wifi.c"
      "./Events/f9_event.c"
      "./PC_COM/pc_com.c"
+     "./FLash/config.c"
 
 INCLUDE_DIRS 
      "./LCD_Driver/Vernon_ST7789T" 
@@ -47,6 +48,7 @@ INCLUDE_DIRS
      "./WIFI"
      "./Events"
      "./PC_COM"
+     "./FLash"
      "."
 )
 

@@ -21,6 +21,9 @@ extern "C"
     void ui_update_time(int screen_id, uint8_t hour, uint8_t minute, uint8_t second);
     void update_wifi_settings_screen(void);
     void reset_wifi_settings_screen(void);
+
+    void ui_update_rtc_status(void);
+    void reset_rtc_screen(void);
 #ifdef __cplusplus
 }
 #endif

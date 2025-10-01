@@ -15,6 +15,7 @@
 #include "user_wifi.h"
 #include "f9_event.h"
 #include "pc_com.h"
+#include "config.h"
 
 #define TAG "main"
 static void device_data_init(void);
@@ -69,9 +70,14 @@ void Display_Loop(void)
                 ui_update_wifi_status();
                 reset_wifi_settings_screen();
             }
+            else if (flow_global_variables.current_screen_id == SCREEN_ID_SCREEN_RTC_SETTINGS)
+            {
+                ui_update_rtc_status();
+            }
             else
             {
                 reset_wifi_settings_screen();
+                reset_rtc_screen();
             }
         }
         static uint32_t send_data_interval = 0;
@@ -81,7 +87,7 @@ void Display_Loop(void)
             char buffer[128];
             datetime_t datetime;
             datetime = PCF85063_GetDatetime();
-            snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d",datetime.hour, datetime.minute, datetime.second);
+            snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", datetime.hour, datetime.minute, datetime.second);
             pc_com_send_data(get_device_data_packet(buffer, get_temperature_celsius(), get_pressure_mbar()), 128);
         }
 
@@ -105,17 +111,23 @@ void Driver_Init(void)
 
 void app_main(void)
 {
+    config_init();
     device_data_init();
-    nvs_flash_init();
     ws_server_init();
     f9_event_init();
     f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_CONNECTED);
     f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_DISCONNECTED);
     f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_GOT_IP);
+    f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_AP_STARTED);
+    f9_events_register_handler(user_wifi_event_handler, E_EVENT_WIFI_AP_STOPPED);
     common_data_init();
     pc_com_init();
     Driver_Init();
-    wifi_init_sta(device_system.wifi_ssid, device_system.wifi_pass);
+    wifi_net_init();
+    if (device_system.wifi_mode == WIFI_CONFIG_MODE_STATION)
+        wifi_init_sta(device_system.wifi_ssid, device_system.wifi_pass);
+    else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
+        wifi_init_ap(device_system.wifi_ap_ssid, device_system.wifi_ap_pass);
 
     LCD_Init();
     LVGL_Init(); // returns the screen object
@@ -178,15 +190,55 @@ static void common_data_init(void)
 
 static void device_data_init(void)
 {
-    device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
     // get ssid and password from the internal flash if needed
     // for now, use hardcoded values
-    snprintf(device_system.wifi_ssid, sizeof(device_system.wifi_ssid), "%s", WIFI_SSID);
-    snprintf(device_system.wifi_pass, sizeof(device_system.wifi_pass), "%s", WIFI_PASS);
+    // load from internal flash if needed
+    esp_err_t ret = ESP_OK;
+    uint8_t ui8 = 0;
+    uint32_t ui32 = 0;
+
+    ret = config_get_primitive(CONF_ITEM(KEY_CONFIG_WIFI_MODE), &device_system.wifi_mode);
+    if (device_system.wifi_mode == 0)
+    {
+        ui8 = WIFI_CONFIG_MODE_AP;
+        config_set(CONF_ITEM(KEY_CONFIG_WIFI_MODE), &ui8);
+    }
+    device_system.wifi_mode_old = device_system.wifi_mode;
+
+    ret = config_get_str(KEY_CONFIG_WIFI_USERNAME, device_system.wifi_ssid, sizeof(device_system.wifi_ssid));
+    if (ret != ESP_OK || strcmp(device_system.wifi_ssid, "") == 0)
+    {
+        ESP_LOGE(TAG, "Failed to get WiFi SSID from flash or SSID is empty, using default.");
+        snprintf(device_system.wifi_ssid, sizeof(device_system.wifi_ssid), "%s", WIFI_SSID);
+        config_set(CONF_ITEM(KEY_CONFIG_WIFI_USERNAME), &device_system.wifi_ssid);
+        config_commit();
+    }
+    ret = config_get_str(KEY_CONFIG_WIFI_PASSWORD, device_system.wifi_pass, sizeof(device_system.wifi_pass));
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get WiFi PASS from flash, using default.");
+        snprintf(device_system.wifi_pass, sizeof(device_system.wifi_pass), "%s", WIFI_PASS);
+        config_set(CONF_ITEM(KEY_CONFIG_WIFI_PASSWORD), &device_system.wifi_pass);
+        config_commit();
+    }
+
     snprintf(device_system.wifi_ip, sizeof(device_system.wifi_ip), "%s", "");
+
+    ESP_LOGI(TAG, "Load from flash WiFi mode: %d", device_system.wifi_mode);
+    ESP_LOGI(TAG, "Load from flash WiFi SSID: %s", device_system.wifi_ssid);
+    ESP_LOGI(TAG, "Load from flash WiFi PASS: %s", device_system.wifi_pass);
+    // config AP mode
     snprintf(device_system.wifi_ap_ssid, sizeof(device_system.wifi_ap_ssid), "ESP32-Force-Five");
-    snprintf(device_system.wifi_ap_ip, sizeof(device_system.wifi_ap_ip), "%s", "");
-    device_system.auto_sync_time = false;
+    snprintf(device_system.wifi_ap_pass, sizeof(device_system.wifi_ap_pass), "%s", "");
+    snprintf(device_system.wifi_ap_ip, sizeof(device_system.wifi_ap_ip), "%s", "192.168.4.1");
+
+    ret = config_get_primitive(CONF_ITEM(KEY_CONFIG_AUTO_SYNC_TIME), &device_system.auto_sync_time);
+    if (device_system.wifi_mode == 0)
+    {
+        ui8 = 0;
+        config_set(CONF_ITEM(KEY_CONFIG_WIFI_MODE), &ui8);
+    }
+    ESP_LOGI(TAG, "Load from flash Auto Sync Time: %d", device_system.auto_sync_time);
     device_system.is_wifi_connected = false;
 }
 
@@ -207,6 +259,15 @@ static void user_wifi_event_handler(void *handler_arg, esp_event_base_t base, in
         // start webserver when got IP
         ESP_LOGI(TAG, "Free heap: %ld", esp_get_free_heap_size());
         ws_server_start();
+        break;
+    case E_EVENT_WIFI_AP_STARTED:
+        ESP_LOGI(TAG, "WiFi AP started event received");
+        is_start_webserver = true;
+        ws_server_start();
+        break;
+    case E_EVENT_WIFI_AP_STOPPED:
+        ESP_LOGI(TAG, "WiFi AP stopped event received");
+        is_start_webserver = false;
         break;
     default:
         ESP_LOGW(TAG, "Unhandled WiFi event ID: %ld", id);

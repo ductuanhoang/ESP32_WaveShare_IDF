@@ -10,6 +10,12 @@
 extern "C"
 {
 #endif
+    #include <stdbool.h>
+    #include <math.h>
+    
+    #define MIN(a,b) (((a)<(b))?(a):(b))
+    #define MAX(a,b) (((a)>(b))?(a):(b))
+
     void ws_server_init(void);
     bool is_ws_init_done(void);
     void ws_server_stop(void);

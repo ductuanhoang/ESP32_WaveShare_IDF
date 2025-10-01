@@ -8,6 +8,7 @@
 #include "ui_update.h"
 #include "PCF85063.h"
 #include "user_wifi.h"
+#include "config.h"
 
 #define TAG "ACTIONS"
 
@@ -143,16 +144,23 @@ void action_wifi_connect_button(lv_event_t *e)
         show_popup("Error", "Please select a WiFi network.", 5000);
         return;
     }
-
-    // wifi_user_save_credentials(ssid, password);
-    // wifi_scan_event_handler(2);
-    // wifi_user_connect(ssid, password);
-    // Clear the input field and dropdown after connection
-    wifi_user_disconnect();
+    // save to flash
+    // init wifi with new credentials
     wifi_user_connect(ssid, password);
     // set to device system
     snprintf(device_system.wifi_ssid, sizeof(device_system.wifi_ssid), "%s", ssid);
     snprintf(device_system.wifi_pass, sizeof(device_system.wifi_pass), "%s", password);
+
+    ESP_LOGI(TAG, "WiFi credentials set in device system. wifi_ssid=%s, wifi_pass=%s", device_system.wifi_ssid, device_system.wifi_pass);
+
+    int ret = config_set(CONF_ITEM(KEY_CONFIG_WIFI_USERNAME), &device_system.wifi_ssid);
+    config_commit();
+    ret |= config_set(CONF_ITEM(KEY_CONFIG_WIFI_PASSWORD), &device_system.wifi_pass);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to save WiFi credentials to flash.");
+    }
+    config_commit();
     ESP_LOGI(TAG, "WiFi credentials set in device system.");
     lv_textarea_set_text(objects.input_password_field, "");
     lv_dropdown_clear_options(objects.input_wifi_list);
@@ -238,6 +246,30 @@ void action_wifi_save(lv_event_t *e)
 {
     // save wifi settings
     ESP_LOGI(TAG, "Saving WiFi settings...");
+    // save to device system
+    device_system.wifi_mode = device_system.wifi_mode_buffer;
+    // save to flash
+    uint8_t ui8 = device_system.wifi_mode;
+    config_set(CONF_ITEM(KEY_CONFIG_WIFI_MODE), &ui8);
+    // check change mode wifi over here
+    switch (device_system.wifi_mode)
+    {
+    case WIFI_CONFIG_MODE_STATION:
+        wifi_init_sta(device_system.wifi_ssid, device_system.wifi_pass);
+        break;
+    case WIFI_CONFIG_MODE_AP:
+        wifi_init_ap(device_system.wifi_ap_ssid, device_system.wifi_ap_pass);
+        break;
+    case WIFI_CONFIG_OFF:
+        wifi_off();
+        /* code */
+        break;
+    default:
+        break;
+    }
+
+    // set background color of wifi ssid and password to red
+    lv_obj_set_style_bg_color(objects.button_save_wifi_settings, lv_color_hex(0x2196f3), LV_PART_MAIN);
     flow_global_variables.current_screen_id = SCREEN_ID_MAIN;
     loadScreen(SCREEN_ID_MAIN);
 }
@@ -256,13 +288,21 @@ void action_checkbox_wifi_station(lv_event_t *e)
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_MODE_STATION;
+            // visible button_wifi_settings
+            // lv_obj_clear_flag(objects.button_wifi_settings, LV_OBJ_FLAG_HIDDEN);
         }
         else
         {
             // set state to on
             lv_obj_add_state(objects.wifi_option_station, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_MODE_STATION;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_MODE_STATION;
+        }
+        if (device_system.wifi_mode_old != device_system.wifi_mode_buffer)
+        {
+            device_system.wifi_mode_old = device_system.wifi_mode_buffer;
+            // set background color of wifi ssid and password to red
+            lv_obj_set_style_bg_color(objects.button_save_wifi_settings, lv_color_hex(0xFF0000), LV_PART_MAIN);
         }
         // LV_LOG_USER("%s: %s", txt, state);
         ESP_LOGI(TAG, "%s: %s", txt, state);
@@ -284,13 +324,21 @@ void action_checkbox_wifi_ap(lv_event_t *e)
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_MODE_AP;
+            // hide button_wifi_settings
+            lv_obj_add_flag(objects.button_wifi_settings, LV_OBJ_FLAG_HIDDEN);
         }
         else
         {
             // set state to on
             lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_MODE_AP;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_MODE_AP;
+        }
+        if (device_system.wifi_mode_old != device_system.wifi_mode_buffer)
+        {
+            device_system.wifi_mode_old = device_system.wifi_mode_buffer;
+            // set background color of wifi ssid and password to red
+            lv_obj_set_style_bg_color(objects.button_save_wifi_settings, lv_color_hex(0xFF0000), LV_PART_MAIN);
         }
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
@@ -311,13 +359,19 @@ void action_checkbox_wifi_off(lv_event_t *e)
             // set uncheck other checkbox
             lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_OFF;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_OFF;
         }
         else
         {
             // set state to on
             lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
-            device_system.wifi_mode = WIFI_CONFIG_OFF;
+            device_system.wifi_mode_buffer = WIFI_CONFIG_OFF;
+        }
+        if (device_system.wifi_mode_old != device_system.wifi_mode_buffer)
+        {
+            device_system.wifi_mode_old = device_system.wifi_mode_buffer;
+            // set background color of wifi ssid and password to red
+            lv_obj_set_style_bg_color(objects.button_save_wifi_settings, lv_color_hex(0xFF0000), LV_PART_MAIN);
         }
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
@@ -332,7 +386,11 @@ void action_checkbox_sync_time(lv_event_t *e)
         const char *txt = lv_checkbox_get_text(obj);
         const char *state = lv_obj_get_state(obj) & LV_STATE_CHECKED ? "Checked" : "Unchecked";
         device_system.auto_sync_time = (lv_obj_get_state(obj) & LV_STATE_CHECKED) ? true : false;
-        // LV_LOG_USER("%s: %s", txt, state);
+        // LV_LOG_USER("%s: %s", txt, state)
+        // save to flash
+        uint8_t ui8 = device_system.auto_sync_time ? 1 : 0;
+        config_set(CONF_ITEM(KEY_CONFIG_AUTO_SYNC_TIME), &ui8);
+        config_commit();
         ESP_LOGI(TAG, "%s: %s", txt, state);
     }
 }

@@ -27,9 +27,11 @@
 /***********************************************************************************************************************
  * Typedef definitions
  ***********************************************************************************************************************/
-static bool is_wifi_init_done = false;
+static bool wifi_initialized = false;
 static bool is_wifi_connected = false;
-
+static esp_netif_t *wifi_netif_sta = NULL;
+static esp_netif_t *wifi_netif_ap = NULL;
+static bool is_scanning = false;
 /***********************************************************************************************************************
  * Private global variables and functions
  ***********************************************************************************************************************/
@@ -41,128 +43,106 @@ static void wifi_scan_task(void *pvParameters);
 /***********************************************************************************************************************
  * Imported global variables and functions (from other files)
  ***********************************************************************************************************************/
-
-void wifi_init_sta(const char *ssid, const char *password)
+void wifi_net_init(void)
 {
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
+    // Init TCP/IP and WiFi
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    wifi_netif_sta = esp_netif_create_default_wifi_sta();
+    wifi_netif_ap = esp_netif_create_default_wifi_ap();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    // Register WiFi and IP event handler
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id);
-    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_got_ip);
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_START, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STOP, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &wifi_event_handler, NULL));
+}
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = "",
-            .password = "",
-            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-        },
-    };
-    snprintf((char *)wifi_config.sta.ssid, sizeof(wifi_config.sta.ssid), "%s", ssid);
-    snprintf((char *)wifi_config.sta.password, sizeof(wifi_config.sta.password), "%s", password);
+void wifi_init_sta(const char *ssid, const char *pass)
+{
+    is_wifi_connected = false;
+    ESP_LOGI(TAG, "Switching to STA mode");
 
+    esp_wifi_stop();
     esp_wifi_set_mode(WIFI_MODE_STA);
+
+    wifi_config_t wifi_config = {0};
+    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
+
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
-    is_wifi_init_done = true;
-    ESP_LOGI(TAG, "Connecting to WiFi SSID:%s", WIFI_SSID);
 }
 
-void user_wifi_deinit(void)
+void wifi_init_ap(const char *ssid, const char *pass)
 {
+    is_wifi_connected = false;
+    ESP_LOGI(TAG, "Switching to AP mode");
+
     esp_wifi_stop();
-    esp_wifi_deinit();
-    esp_event_loop_delete_default();
-    esp_netif_deinit();
-    is_wifi_init_done = false;
-    ESP_LOGI(TAG, "WiFi deinitialized");
-}
-
-void wifi_user_disconnect(void)
-{
-    if (is_wifi_init_done)
-    {
-        esp_wifi_disconnect();
-        is_wifi_connected = false;
-        ESP_LOGI(TAG, "WiFi disconnected");
-    }
-}
-
-void wifi_user_connect(const char *ssid, const char *password)
-{
-    if (is_wifi_init_done)
-    {
-        wifi_config_t wifi_config = {
-            .sta = {
-                .ssid = "",
-                .password = "",
-                .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-            },
-        };
-        snprintf((char *)wifi_config.sta.ssid, sizeof(wifi_config.sta.ssid), "%s", ssid);
-        snprintf((char *)wifi_config.sta.password, sizeof(wifi_config.sta.password), "%s", password);
-        esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-        esp_wifi_connect();
-        ESP_LOGI(TAG, "Reconnecting to WiFi SSID:%s", ssid);
-    }
-}
-
-void wifi_init_ap(void)
-{
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    esp_netif_init();
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_ap();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
-
-    // Register WiFi event handler
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id);
+    esp_wifi_set_mode(WIFI_MODE_AP);
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = "ESP32-Force-Five",
-            .ssid_len = strlen("ESP32-Force-Five"),
+            .ssid = "",
+            .ssid_len = 0,
             .channel = 1,
-            .password = "123456789",
+            .password = "",
             .max_connection = 4,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK},
     };
-    if (strlen("123456789") == 0)
+
+    strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
+    wifi_config.ap.ssid_len = strlen(ssid);
+    strncpy((char *)wifi_config.ap.password, pass, sizeof(wifi_config.ap.password));
+
+    if (strlen(pass) == 0)
     {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
-    esp_wifi_set_mode(WIFI_MODE_AP);
     esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
     esp_wifi_start();
-    is_wifi_init_done = true;
-    ESP_LOGI(TAG, "WiFi AP started. SSID:%s password:%s", "ESP32-Force-Five", "123456789");
+}
+
+void wifi_off(void)
+{
+    ESP_LOGI(TAG, "Turning off WiFi");
+    esp_wifi_stop();
 }
 
 void wifi_scan_action(void)
 {
-    // start a task to scan for WiFi networks
+    // Create a task to scan for WiFi networks
     xTaskCreate(&wifi_scan_task, "wifi_scan_task", 4096, NULL, 5, NULL);
+}
+
+void wifi_user_disconnect(void)
+{
+    // if (is_wifi_connected)
+    // {
+        esp_wifi_disconnect();
+        is_wifi_connected = false;
+    // }
+}
+
+void wifi_user_connect(const char *ssid, const char *pass)
+{
+    if (is_wifi_connected)
+    {
+        esp_wifi_disconnect();
+        is_wifi_connected = false;
+    }
+    wifi_init_sta(ssid, pass);
 }
 
 bool get_is_wifi_connected(void)
 {
     return is_wifi_connected;
-}
-
-bool get_is_wifi_init_done(void)
-{
-    return is_wifi_init_done;
 }
 /***********************************************************************************************************************
  * static functions
@@ -171,11 +151,9 @@ static void wifi_scan_task(void *pvParameters)
 {
     while (1)
     {
-        if (is_wifi_connected == false)
-        {
-            // disconnect and start scan
-            wifi_user_disconnect();
-        }
+        // disconnect and start scan
+        is_scanning = true;
+        wifi_user_disconnect();
         uint16_t number = 15;
         wifi_ap_record_t ap_info[15];
         uint16_t ap_count = 0;
@@ -198,6 +176,7 @@ static void wifi_scan_task(void *pvParameters)
         {
             wifi_user_connect(device_system.wifi_ssid, device_system.wifi_pass);
         }
+        is_scanning = false;
         vTaskDelay(10000 / portTICK_PERIOD_MS); // Scan every 10 seconds
         vTaskDelete(NULL);                      // Delete the task after one scan
     }
@@ -207,14 +186,17 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
-        esp_wifi_connect();
+        if (is_scanning == false)
+            esp_wifi_connect();
         is_wifi_connected = false;
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         ESP_LOGW(TAG, "WiFi disconnected, retrying...");
+        ESP_LOGW(TAG, "WiFi disconnected, is_scanning=%d", is_scanning);
         is_wifi_connected = false;
-        esp_wifi_connect();
+        if (is_scanning == false)
+            esp_wifi_connect();
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -235,6 +217,31 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                  event->mac[0], event->mac[1], event->mac[2],
                  event->mac[3], event->mac[4], event->mac[5]);
         // You can add your custom logic here (e.g., start webserver, notify UI, etc.)
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START)
+    {
+        ESP_LOGI(TAG, "WiFi AP started");
+        // You can add your custom logic here (e.g., start webserver, notify UI, etc.)
+        f9_event_post(E_EVENT_WIFI_AP_STARTED, NULL, 0);
+    }
+    else if (event_id == WIFI_EVENT_AP_STOP)
+    {
+        ESP_LOGI(TAG, "WiFi AP stopped");
+        // You can add your custom logic here (e.g., stop webserver, notify UI, etc.)
+        f9_event_post(E_EVENT_WIFI_AP_STOPPED, NULL, 0);
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED)
+    {
+        wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
+        ESP_LOGI("WIFI", "Device disconnected: AID=%d, MAC=%02x:%02x:%02x:%02x:%02x:%02x",
+                 event->aid,
+                 event->mac[0], event->mac[1], event->mac[2],
+                 event->mac[3], event->mac[4], event->mac[5]);
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_AP_STAIPASSIGNED)
+    {
+        ip_event_ap_staipassigned_t *event = (ip_event_ap_staipassigned_t *)event_data;
+        ESP_LOGI("WIFI", "Client assigned IP: " IPSTR, IP2STR(&event->ip));
     }
 }
 /***********************************************************************************************************************

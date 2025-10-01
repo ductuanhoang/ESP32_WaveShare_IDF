@@ -20,8 +20,8 @@ extern "C"
 
     typedef enum
     {
-        WIFI_CONFIG_MODE_STATION = 0,
-        WIFI_CONFIG_MODE_AP = 1,
+        WIFI_CONFIG_MODE_AP = 0,
+        WIFI_CONFIG_MODE_STATION = 1,
         WIFI_CONFIG_OFF = 2
     } wifi_config_mode_t;
     typedef enum
@@ -40,12 +40,15 @@ extern "C"
     typedef struct 
     {
         wifi_config_mode_t wifi_mode;
+        wifi_config_mode_t wifi_mode_buffer;
+        wifi_config_mode_t wifi_mode_old;
         bool auto_sync_time;
         char wifi_ssid[32];
         char wifi_pass[32];
         char wifi_ip[16];
         bool is_wifi_connected;
         char wifi_ap_ssid[32];
+        char wifi_ap_pass[32];
         char wifi_ap_ip[16];
     } System_t;
     

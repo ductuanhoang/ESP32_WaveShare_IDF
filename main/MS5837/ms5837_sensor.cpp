@@ -21,7 +21,7 @@ float temperature_fahrenheit;
 
 bool ms5837_sensor_init(void)
 {
-    i2c0.begin(SDA_PIN, SCL_PIN, I2C_FREQ);
+    // i2c0.begin(SDA_PIN, SCL_PIN, I2C_FREQ);
     ESP_LOGI(TAG, "i2c initialised");
     if (!sensor.initialize())
     {

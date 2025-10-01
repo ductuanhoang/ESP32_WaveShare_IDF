@@ -7,7 +7,7 @@
 #include "vars.h"
 #include "styles.h"
 #include "ui.h"
-#include "user_keyboard.h"
+
 #include <string.h>
 
 objects_t objects;
@@ -369,7 +369,7 @@ void create_screen_screen_settings() {
         }
         {
             lv_obj_t *obj = lv_btn_create(parent_obj);
-            lv_obj_set_pos(obj, 73, 120);
+            lv_obj_set_pos(obj, 74, 146);
             lv_obj_set_size(obj, 176, 39);
             lv_obj_add_event_cb(obj, action_rtc_settings, LV_EVENT_PRESSED, (void *)0);
             {
@@ -379,22 +379,6 @@ void create_screen_screen_settings() {
                     lv_obj_set_pos(obj, 0, 0);
                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                     lv_label_set_text(obj, "RTC Settings");
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                }
-            }
-        }
-        {
-            lv_obj_t *obj = lv_btn_create(parent_obj);
-            lv_obj_set_pos(obj, 73, 176);
-            lv_obj_set_size(obj, 176, 39);
-            lv_obj_add_event_cb(obj, action_system_settings, LV_EVENT_PRESSED, (void *)0);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_label_set_text(obj, "System Settings");
                     lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
                 }
             }
@@ -504,14 +488,19 @@ void create_screen_screen_wifi_settings() {
             }
         }
         {
+            // button_save_wifi_settings
             lv_obj_t *obj = lv_btn_create(parent_obj);
+            objects.button_save_wifi_settings = obj;
             lv_obj_set_pos(obj, 254, 80);
             lv_obj_set_size(obj, 65, 33);
             lv_obj_add_event_cb(obj, action_wifi_save, LV_EVENT_PRESSED, (void *)0);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0xff2196f3), LV_PART_MAIN | LV_STATE_DEFAULT);
             {
                 lv_obj_t *parent_obj = obj;
                 {
+                    // label_button_save_wifi_settings
                     lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.label_button_save_wifi_settings = obj;
                     lv_obj_set_pos(obj, 0, 0);
                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                     lv_label_set_text(obj, "Save");
@@ -573,7 +562,9 @@ void create_screen_screen_rtc_settings() {
             }
         }
         {
+            // sync_option_sync_time
             lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.sync_option_sync_time = obj;
             lv_obj_set_pos(obj, 59, 153);
             lv_obj_set_size(obj, 203, LV_SIZE_CONTENT);
             lv_checkbox_set_text(obj, "Auto Sync with server");
@@ -726,10 +717,9 @@ void create_screen_screen_wifi_scan() {
     {
         lv_obj_t *parent_obj = obj;
         {
-            // lv_obj_t *obj = lv_keyboard_create(parent_obj);
-            lv_obj_t *obj = my_keyboard_create(parent_obj);
-            lv_obj_set_pos(obj, 10, 115);
-            lv_obj_set_size(obj, 300, 120);
+            lv_obj_t *obj = lv_keyboard_create(parent_obj);
+            lv_obj_set_pos(obj, 1, 115);
+            lv_obj_set_size(obj, 315, 120);
             lv_obj_add_event_cb(obj, action_keyboard_event, LV_EVENT_VALUE_CHANGED, (void *)0);
             lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
         }

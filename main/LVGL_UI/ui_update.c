@@ -414,7 +414,12 @@ void update_wifi_settings_screen(void)
         // Clear the input field and dropdown after returning to main screen
         if (device_system.wifi_mode == WIFI_CONFIG_MODE_STATION)
         {
+            lv_obj_clear_flag(objects.wifi_setting_ssid, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(objects.wifi_setting_ip, LV_OBJ_FLAG_HIDDEN);
+
             lv_obj_add_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            // visible button_wifi_settings
+            lv_obj_clear_flag(objects.button_wifi_settings, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
             lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
             // set label of button is "Scan Networks"
@@ -430,19 +435,37 @@ void update_wifi_settings_screen(void)
             lv_label_set_text(objects.wifi_setting_ip, buf);
         }
         // disable other options for now
-        lv_obj_add_state(objects.wifi_option_ap, LV_STATE_DISABLED);
-        lv_obj_add_state(objects.wifi_option_off, LV_STATE_DISABLED);
-        // else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
-        // {
-        //     // update ssid connect to and ip
-        //     // lv_textarea_set_text(objects.wifi_setting_ssid, device_system.wifi_ap_ssid);
-        //     // lv_textarea_set_text(objects.wifi_setting_ip, device_system.wifi_ap_ip);
-        //     lv_label_set_text(objects.label_button_wifi_settings, "Setup Networks");
+        // lv_obj_add_state(objects.wifi_option_ap, LV_STATE_DISABLED);
+        else if (device_system.wifi_mode == WIFI_CONFIG_MODE_AP)
+        {
+            lv_obj_clear_flag(objects.wifi_setting_ssid, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(objects.wifi_setting_ip, LV_OBJ_FLAG_HIDDEN);
+            // update ssid connect to and ip
+            lv_label_set_text(objects.label_button_wifi_settings, "Setup Networks");
+            char buf[64];
+            snprintf(buf, sizeof(buf), "SSID: %s", device_system.wifi_ap_ssid);
+            lv_label_set_text(objects.wifi_setting_ssid, buf);
 
-        //     lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
-        //     lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
-        //     lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
-        // }
+            snprintf(buf, sizeof(buf), "IP: %s", "192.168.4.1");
+            lv_label_set_text(objects.wifi_setting_ip, buf);
+
+            lv_obj_add_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_off, LV_STATE_CHECKED);
+            // hide button_wifi_settings
+            lv_obj_add_flag(objects.button_wifi_settings, LV_OBJ_FLAG_HIDDEN);
+        }
+        else
+        {
+            lv_obj_add_flag(objects.button_wifi_settings, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_state(objects.wifi_option_ap, LV_STATE_CHECKED);
+            lv_obj_clear_state(objects.wifi_option_station, LV_STATE_CHECKED);
+
+            lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
+
+            lv_obj_add_flag(objects.wifi_setting_ssid, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(objects.wifi_setting_ip, LV_OBJ_FLAG_HIDDEN);
+        }
         // else if (device_system.wifi_mode == WIFI_CONFIG_OFF)
         // {
         //     lv_obj_add_state(objects.wifi_option_off, LV_STATE_CHECKED);
@@ -456,4 +479,22 @@ void update_wifi_settings_screen(void)
 void reset_wifi_settings_screen(void)
 {
     is_first_load_wifi_screen = true;
+}
+
+static bool is_first_load_rtc_screen = true;
+void ui_update_rtc_status(void)
+{
+    if (is_first_load_rtc_screen)
+    {
+        is_first_load_rtc_screen = false;
+        if (device_system.auto_sync_time)
+            lv_obj_add_state(objects.sync_option_sync_time, LV_STATE_CHECKED);
+        else
+            lv_obj_clear_state(objects.sync_option_sync_time, LV_STATE_CHECKED);
+    }
+}
+
+void reset_rtc_screen(void)
+{
+    is_first_load_rtc_screen = true;
 }

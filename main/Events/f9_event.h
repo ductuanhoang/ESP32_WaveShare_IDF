@@ -18,6 +18,9 @@ extern "C"
         E_EVENT_WIFI_CONNECTED = 0,
         E_EVENT_WIFI_DISCONNECTED,
         E_EVENT_WIFI_GOT_IP,
+
+        E_EVENT_WIFI_AP_STARTED,
+        E_EVENT_WIFI_AP_STOPPED,
         E_EVENT_MAX
     } e_f9_event;
 
