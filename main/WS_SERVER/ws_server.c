@@ -323,6 +323,7 @@ static httpd_handle_t start_webserver_handler(void)
     config.stack_size = 8192; // Increase stack size if needed
     config.core_id = 0;       // Run on core 0
     config.uri_match_fn = httpd_uri_match_wildcard; // <--- quan trọng
+    config.server_port = 8080;
     
     if (httpd_start(&server, &config) == ESP_OK)
     {
